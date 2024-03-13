@@ -1,0 +1,62 @@
+apiVersion: v1
+baseDomain: {{ publiczonename }}
+proxy:
+  httpProxy: {{ httpProxy }} 
+  httpsProxy: {{ httpsProxy }}
+  noProxy: {{ noproxy_url }}
+additionalTrustBundle: ""
+compute: 
+- hyperthreading: Enabled 
+  name: worker
+  replicas: 3
+  platform:
+    vsphere: 
+      cpus: 16
+      coresPerSocket: 2
+      memoryMB: 65536
+      osDisk:
+        diskSizeGB: 100
+controlPlane: 
+  hyperthreading: Enabled 
+  name: master
+  replicas: 3
+  platform:
+    vsphere: 
+      cpus: 8
+      coresPerSocket: 2
+      memoryMB: 32768
+      osDisk:
+        diskSizeGB: 100
+metadata:
+  name: {{ cluster_name }}
+networking:
+  clusterNetwork:
+  - cidr: {{ clustercidr }}
+    hostPrefix: 24
+  machineNetwork:
+  - cidr: {{ vpccidr }}
+  networkType: OpenShiftSDN
+  serviceNetwork:
+  - {{ servicecidr }}
+platform:
+  vsphere:
+    vCenter: {{ vcenter_hostname }}
+    username: {{ vcenter_username }}
+    password: {{ vcenter_password }}
+    datacenter: {{ vcenter_datacenter }}
+    defaultDatastore: {{ vcenter_datastore }}
+    diskType: thin 
+    network: "{{ VM_Network }}"
+    cluster: {{ vcenter_cluster }}
+    apiVIP: {{ api_ip }}
+    ingressVIP: {{ ingress_ip }}
+    folder: {{ vcenter_folder }}
+fips: false
+imageContentSources: []
+pullSecret: '{{ pullsecret }}'
+sshKey: |
+  {{ sshauthfile }}
+capabilities:
+  baselineCapabilitySet: vCurrent
+  additionalEnabledCapabilities:
+  - marketplace
