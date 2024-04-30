@@ -35,7 +35,7 @@ networking:
     hostPrefix: 24
   machineNetwork:
   - cidr: {{ vpccidr }}
-  networkType: OpenShiftSDN
+  networkType: OVNKubernetes
   serviceNetwork:
   - {{ servicecidr }}
 platform:
