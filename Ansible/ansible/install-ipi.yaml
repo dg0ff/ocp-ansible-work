@@ -8,28 +8,28 @@
   tasks:
     - name: Verify installation directory for install-config.yaml
       file:
-        path: /home/ens_admin/{{ cluster_name }}/{{ vcenter_resource }}
+        path: /home/<username>/{{ cluster_name }}/{{ vcenter_resource }}
         state: directory
 
     - name: render install-config template
       template:
         src: templates/install-config.j2
-        dest: /home/ens_admin/{{ cluster_name }}/{{ vcenter_resource }}/install-config.yaml
+        dest: /home/<username>/{{ cluster_name }}/{{ vcenter_resource }}/install-config.yaml
       no_log: false
 
     - name: openshift-installer block
       block:
        - name: run openshift-installer using config file 
-         ansible.builtin.command: /usr/local/bin/openshift-install create cluster --dir=/home/ens_admin/{{ cluster_name }}/{{ vcenter_resource }} --log-level=debug 
+         ansible.builtin.command: /usr/local/bin/openshift-install create cluster --dir=/home/<username>/{{ cluster_name }}/{{ vcenter_resource }} --log-level=debug 
          environment:
-           XDG_CACHE_HOME: /home/ens_admin/{{ cluster_name }}/{{ vcenter_resource }}
-           XDG_CONFIG_HOME: /home/ens_admin/{{ cluster_name }}/{{ vcenter_resource }}
+           XDG_CACHE_HOME: /home/<username>/{{ cluster_name }}/{{ vcenter_resource }}
+           XDG_CONFIG_HOME: /home/<username>/{{ cluster_name }}/{{ vcenter_resource }}
       rescue:
        - name: openshift-installer wait-for install-complete
-         ansible.builtin.command: /usr/local/bin/openshift-install wait-for install-complete --dir=/home/ens_admin/{{ cluster_name }}/{{ vcenter_resource }} --log-level=debug
+         ansible.builtin.command: /usr/local/bin/openshift-install wait-for install-complete --dir=/home/<username>/{{ cluster_name }}/{{ vcenter_resource }} --log-level=debug
          environment:
-           XDG_CACHE_HOME: /home/ens_admin/{{ cluster_name }}/{{ vcenter_resource }}
-           XDG_CONFIG_HOME: /home/ens_admin/{{ cluster_name }}/{{ vcenter_resource }}
+           XDG_CACHE_HOME: /home/<username>/{{ cluster_name }}/{{ vcenter_resource }}
+           XDG_CONFIG_HOME: /home/<username>/{{ cluster_name }}/{{ vcenter_resource }}
 
     - name: Wait for nodes to be 'Ready'
       ansible.builtin.wait_for:
@@ -37,7 +37,7 @@
       delegate_to: localhost
 
     - name: Grab cluster token
-      ansible.builtin.shell: curl -s -k -i -L -X GET --user kubeadmin:$(cat /home/ens_admin/{{ cluster_name }}/{{ vcenter_resource }}/auth/kubeadmin-password) "https://oauth-openshift.apps.{{ OCP_CLUSTER }}/oauth/authorize?response_type=token&client_id=openshift-challenging-client" | grep  "access_token=" | awk -F'=' '{print $2}' | awk -F'&' '{print $1}'
+      ansible.builtin.shell: curl -s -k -i -L -X GET --user kubeadmin:$(cat /home/<username>/{{ cluster_name }}/{{ vcenter_resource }}/auth/kubeadmin-password) "https://oauth-openshift.apps.{{ OCP_CLUSTER }}/oauth/authorize?response_type=token&client_id=openshift-challenging-client" | grep  "access_token=" | awk -F'=' '{print $2}' | awk -F'&' '{print $1}'
       register: token
 
     - name: Grabbing Openshift clusterid
@@ -66,11 +66,11 @@
 
     - name: install argo operator
       k8s:
-        kubeconfig: '/home/ens_admin/{{ cluster_name }}/{{ vcenter_resource }}/auth/kubeconfig'
+        kubeconfig: '/home/<username>/{{ cluster_name }}/{{ vcenter_resource }}/auth/kubeconfig'
         state: present
         definition: "{{ lookup('template', '{{ item }}') | from_yaml_all }}"
       with_fileglob:
-        - "/home/ens_admin/openshift-cluster-deploy/argo/00*.yaml"
+        - "/home/<username>/openshift-cluster-deploy/argo/00*.yaml"
           #when: nodes_ready.stdout.find('condition met') != -1
 
     - name: Wait for Argo operator to finish install before installing applicationset
@@ -80,7 +80,7 @@
 
     - name: install argo repos
       k8s:
-        kubeconfig: '/home/ens_admin/{{ cluster_name }}/{{ vcenter_resource }}/auth/kubeconfig'
+        kubeconfig: '/home/<username>/{{ cluster_name }}/{{ vcenter_resource }}/auth/kubeconfig'
         state: present
         definition: "{{ lookup('template', '{{ item }}') | from_yaml_all }}"
       with_fileglob:
@@ -94,7 +94,7 @@
 
     - name: Apply argo applicationset
       k8s:
-        kubeconfig: '/home/ens_admin/{{ cluster_name }}/{{ vcenter_resource }}/auth/kubeconfig'
+        kubeconfig: '/home/<username>/{{ cluster_name }}/{{ vcenter_resource }}/auth/kubeconfig'
         state: present
         definition: "{{ lookup('file', '{{ argo_files }}/201-argo-applicationset.yaml') | from_yaml_all}}" 
 
