@@ -98,11 +98,3 @@
         state: present
         definition: "{{ lookup('file', '{{ argo_files }}/201-argo-applicationset.yaml') | from_yaml_all}}" 
 
-    - name: install Envision objects
-      k8s:
-        kubeconfig: '~/{{ cluster_name }}/{{ vcenter_resource }}/auth/kubeconfig'
-        state: present
-        definition: "{{ lookup('template', '{{ item }}') | from_yaml_all }}"
-      with_fileglob:
-        - "~/openshift-cluster-deploy/eso/00*.yaml"
-
