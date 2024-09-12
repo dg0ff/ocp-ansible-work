@@ -36,6 +36,8 @@
         timeout: 900
       delegate_to: localhost
 
+## Next steps will install the argo operator on the cluster.  This method can be used for any operator installations needed as day1 installations.
+
     - name: Grab cluster token
       ansible.builtin.shell: curl -s -k -i -L -X GET --user kubeadmin:$(cat /home/<username>/{{ cluster_name }}/{{ vcenter_resource }}/auth/kubeadmin-password) "https://oauth-openshift.apps.{{ OCP_CLUSTER }}/oauth/authorize?response_type=token&client_id=openshift-challenging-client" | grep  "access_token=" | awk -F'=' '{print $2}' | awk -F'&' '{print $1}'
       register: token
@@ -43,26 +45,6 @@
     - name: Grabbing Openshift clusterid
       ansible.builtin.shell:   oc login --token={{ token.stdout }} --server=https://{{ api_url }} --insecure-skip-tls-verify >> /dev/null && oc get -o jsonpath='{.status.infrastructureName}{"\n"}' infrastructure cluster      
       register: clusterid
-
-    - name: Inputting clusterid into overlay/infra-machineset
-      replace:
-        regexp: "clusterid"
-        replace: "{{ clusterid.stdout }}"
-        path: ~/openshift-overlay/infra-nodes/{{ env }}/001-vsphere-infra-ms.yaml
-    - name: Inputting clusterid into overlay/storage-machineset
-      replace:
-        regexp: "clusterid"
-        replace: "{{ clusterid.stdout }}"
-        path: ~/openshift-overlay/infra-nodes/{{ env }}/002-vsphere-odf-storage-ms.yaml 
-
-    - name: Inputting clusterid into cluster-deploy/eso manifest
-      replace:
-        regexp: "clusterid"
-        replace: "{{ clusterid.stdout }}"
-        path: ~/openshift-cluster-deploy/eso/008-openshift-values-secret.yaml
- 
-    - name: Push to Bitbucket
-      ansible.builtin.shell: cd ~/openshift-overlay && ./{{ env }}-gitpush.sh
 
     - name: install argo operator
       k8s:
