@@ -1,5 +1,5 @@
 # Openshift Deployment Process
-This folder defines an ansible role to deploy a managed OCP cluster from the an ACM hub cluster.
+This folder defines an ansible role to deploy a managed OCP cluster from an ACM hub cluster.
 
 Here is a current layout of this base role folder:
 ```
