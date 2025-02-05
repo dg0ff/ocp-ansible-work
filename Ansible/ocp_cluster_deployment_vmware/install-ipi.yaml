@@ -1,0 +1,82 @@
+---
+- name: build ocp4 cluster
+  gather_facts: true
+  hosts: local
+  become: false
+    #vars_files:
+    #- ./inventory/group_vars/*.yaml
+  tasks:
+    - name: Verify installation directory for install-config.yaml
+      file:
+        path: /home/<username>/{{ cluster_name }}/{{ vcenter_resource }}
+        state: directory
+
+    - name: render install-config template
+      template:
+        src: templates/install-config.j2
+        dest: /home/<username>/{{ cluster_name }}/{{ vcenter_resource }}/install-config.yaml
+      no_log: false
+
+    - name: openshift-installer block
+      block:
+       - name: run openshift-installer using config file 
+         ansible.builtin.command: /usr/local/bin/openshift-install create cluster --dir=/home/<username>/{{ cluster_name }}/{{ vcenter_resource }} --log-level=debug 
+         environment:
+           XDG_CACHE_HOME: /home/<username>/{{ cluster_name }}/{{ vcenter_resource }}
+           XDG_CONFIG_HOME: /home/<username>/{{ cluster_name }}/{{ vcenter_resource }}
+      rescue:
+       - name: openshift-installer wait-for install-complete
+         ansible.builtin.command: /usr/local/bin/openshift-install wait-for install-complete --dir=/home/<username>/{{ cluster_name }}/{{ vcenter_resource }} --log-level=debug
+         environment:
+           XDG_CACHE_HOME: /home/<username>/{{ cluster_name }}/{{ vcenter_resource }}
+           XDG_CONFIG_HOME: /home/<username>/{{ cluster_name }}/{{ vcenter_resource }}
+
+    - name: Wait for nodes to be 'Ready'
+      ansible.builtin.wait_for:
+        timeout: 900
+      delegate_to: localhost
+
+## Next steps will install the argo operator on the cluster.  This method can be used for any operator installations needed as day1 installations.
+
+    - name: Grab cluster token
+      ansible.builtin.shell: curl -s -k -i -L -X GET --user kubeadmin:$(cat /home/<username>/{{ cluster_name }}/{{ vcenter_resource }}/auth/kubeadmin-password) "https://oauth-openshift.apps.{{ OCP_CLUSTER }}/oauth/authorize?response_type=token&client_id=openshift-challenging-client" | grep  "access_token=" | awk -F'=' '{print $2}' | awk -F'&' '{print $1}'
+      register: token
+
+    - name: Grabbing Openshift clusterid
+      ansible.builtin.shell:   oc login --token={{ token.stdout }} --server=https://{{ api_url }} --insecure-skip-tls-verify >> /dev/null && oc get -o jsonpath='{.status.infrastructureName}{"\n"}' infrastructure cluster      
+      register: clusterid
+
+    - name: install argo operator
+      k8s:
+        kubeconfig: '/home/<username>/{{ cluster_name }}/{{ vcenter_resource }}/auth/kubeconfig'
+        state: present
+        definition: "{{ lookup('template', '{{ item }}') | from_yaml_all }}"
+      with_fileglob:
+        - "/home/<username>/openshift-cluster-deploy/argo/00*.yaml"
+          #when: nodes_ready.stdout.find('condition met') != -1
+
+    - name: Wait for Argo operator to finish install before installing applicationset
+      ansible.builtin.wait_for:
+       timeout: 180
+      delegate_to: localhost
+
+    - name: install argo repos
+      k8s:
+        kubeconfig: '/home/<username>/{{ cluster_name }}/{{ vcenter_resource }}/auth/kubeconfig'
+        state: present
+        definition: "{{ lookup('template', '{{ item }}') | from_yaml_all }}"
+      with_fileglob:
+        - "{{ argo_files }}/10*.yaml"
+          #when: nodes_ready.stdout.find('condition met') != -1
+
+    - name: Wait for Argo installations to settle down before moving forward
+      ansible.builtin.wait_for:
+        timeout: 60
+      delegate_to: localhost
+
+    - name: Apply argo applicationset
+      k8s:
+        kubeconfig: '/home/<username>/{{ cluster_name }}/{{ vcenter_resource }}/auth/kubeconfig'
+        state: present
+        definition: "{{ lookup('file', '{{ argo_files }}/201-argo-applicationset.yaml') | from_yaml_all}}" 
+

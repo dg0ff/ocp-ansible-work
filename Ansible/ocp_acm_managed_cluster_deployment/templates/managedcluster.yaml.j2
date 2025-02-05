@@ -1,0 +1,17 @@
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: {{ clustername }}
+  labels:
+    cloud: vSphere
+    cluster.open-cluster-management.io/clusterset: managed
+    name: {{ clustername }}
+    vendor: OpenShift
+{% if additionalTags is defined %}
+{% for tag in additionalTags.items() %}
+    {{ tag[0] }}: {{ tag[1] }}
+{% endfor %}
+{% endif %}
+spec:
+  hubAcceptsClient: true
