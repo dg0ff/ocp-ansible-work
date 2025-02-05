@@ -30,6 +30,4 @@ Here is a current layout of this base role folder:
     └── vs-worker-machinepool.yaml.j2
 ```
 
-
-This role will create the necessary yaml files from templates and apply them within the hub cluster.  
-
+The operations contained in tasks/main.yml will run through the steps of creating the necessary dirs and files needed for the managed cluster and will then apply those accordingly.
