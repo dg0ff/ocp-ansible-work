@@ -22,7 +22,6 @@ Here is a current layout of this base ansible folder:
 
 Changes for the Openshift install will be made to the following vars files only:
 `vars.yaml`
-(File can be called whatever you'd like)
 
 The vars file is used to input their variables into the template/install-config.j2 which in turn creates the install-config.yaml to be used by the Openshift-installer.
 These live in the base ansible folder where the install-ipi.yaml playbook resides. 
