@@ -1,0 +1,4 @@
+{% for i in file_list %}
+{{ lookup('file', i, errors='ignore') }}
+{% endfor %}
+...

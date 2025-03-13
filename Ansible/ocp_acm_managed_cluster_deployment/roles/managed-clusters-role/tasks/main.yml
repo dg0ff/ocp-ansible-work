@@ -1,0 +1,133 @@
+---
+# tasks file for managed-clusters-role
+- debug:
+    msg: "Note: 'oc login' to the hub cluster prior to running this playbook"
+#oc login to the Hub cluster prior to running this playbook
+- name: ------
+  pause:
+    seconds: 10
+
+- name: Set a clustername based on the host run against
+  ansible.builtin.set_fact:
+   clustername: "{{ ocp_clustername }}"
+
+   #- name: Remove files from previous runs
+   # ansible.builtin.file:
+   #    path:  ./cluster-manifests
+   #    state: absent
+
+- name: Create manifests dir
+  ansible.builtin.file:
+    path:  ./cluster-manifests/{{ clustername }}
+    state: directory
+
+- name: Create Namespace Object
+  ansible.builtin.template:
+    src: namespace.yaml.j2
+    dest: ./cluster-manifests/{{ clustername }}/{{ clustername }}-namespace
+    mode: '0640'
+
+- name: Create pull-secret Secret
+  ansible.builtin.template:
+    src: pull-secret.yaml.j2
+    dest: ./cluster-manifests/{{ clustername}}/{{ clustername }}-pull-secret
+    mode: '0640'
+
+- name: Create ssh key pair Secret
+  ansible.builtin.template:
+    src: ssh-key.yaml.j2
+    dest: ./cluster-manifests/{{ clustername }}/{{ clustername }}-ssh-key
+    mode: '0640'
+
+- name: Create managedcluster object
+  ansible.builtin.template:
+    src: managedcluster.yaml.j2
+    dest: ./cluster-manifests/{{ clustername }}/{{ clustername }}-managedcluster
+    mode: '0640'
+
+- name: Create klusterletaddonconfig object
+  ansible.builtin.template:
+    src: klusterletaddonconfig.yaml.j2
+    dest: ./cluster-manifests/{{ clustername }}/{{ clustername }}-klusterletaddonconfig
+    mode: '0640'
+
+- name: Create a temp file to house the install-config.yaml
+  ansible.builtin.tempfile:
+    state: file
+    prefix: ""
+  register: tempInstallConfig
+
+- name: vSphere specfic tasks
+  block: 
+  
+    - name: Create install-config.yaml file
+      ansible.builtin.template:
+        src: vs-install-config.yaml.j2
+        dest: "{{ tempInstallConfig.path }}"
+        mode: '0600'
+
+    - name: Create vs-creds Secret
+      ansible.builtin.template:
+        src: vs-creds.yaml.j2
+        dest: ./cluster-manifests/{{ clustername }}/{{ clustername }}-creds
+        mode: '0640'
+
+    - name: Create vs-certs Secret
+      ansible.builtin.template:
+        src: vs-certs.yaml.j2
+        dest: ./cluster-manifests/{{ clustername }}/{{ clustername }}-certs
+        mode: '0640'
+
+    - name: Create vSphere clusterdeployment object
+      ansible.builtin.template:
+        src: vs-clusterdeployment.yaml.j2
+        dest: ./cluster-manifests/{{ clustername }}/{{ clustername }}-clusterdeployment
+        mode: '0640'
+
+    - name: Create vSphere worker machinepool object
+      ansible.builtin.template:
+        src: vs-worker-machinepool.yaml.j2
+        dest: ./cluster-manifests/{{ clustername }}/{{ clustername }}-worker-machinepool
+        mode: '0640'
+
+  when: cloud_type == 'vsphere' 
+
+# end vSphere block
+
+- name: Encode the install-config.yaml
+  ansible.builtin.set_fact:
+    encodedInstallConfig: "{{ lookup('ansible.builtin.file', tempInstallConfig.path) | b64encode }}"
+  no_log: True
+
+- name: Create install-config Secret
+  ansible.builtin.template:
+    src: cluster-install-config-secret.yaml.j2
+    dest: ./cluster-manifests/{{ clustername }}/{{ clustername }}-install-config
+    mode: '0640'
+
+- name: Generate full deployment
+  ansible.builtin.template:
+    src: full-deploy.j2
+    dest: ./cluster-manifests/{{ clustername }}/{{ clustername }}-full-deploy.yaml
+    mode: '0640'
+  vars:
+    file_list:
+      - ./cluster-manifests/{{ clustername }}/{{ clustername }}-namespace
+      - ./cluster-manifests/{{ clustername }}/{{ clustername }}-clusterdeployment
+      - ./cluster-manifests/{{ clustername }}/{{ clustername }}-managedcluster
+      - ./cluster-manifests/{{ clustername }}/{{ clustername }}-worker-machinepool
+      - ./cluster-manifests/{{ clustername }}/{{ clustername }}-pull-secret
+      - ./cluster-manifests/{{ clustername }}/{{ clustername }}-install-config
+      - ./cluster-manifests/{{ clustername }}/{{ clustername }}-ssh-key
+      - ./cluster-manifests/{{ clustername }}/{{ clustername }}-creds
+      - ./cluster-manifests/{{ clustername }}/{{ clustername }}-certs
+      - ./cluster-manifests/{{ clustername }}/{{ clustername }}-klusterletaddonconfig
+
+- name: Clean up temp file
+  ansible.builtin.file:
+    path: "{{ tempInstallConfig.path }}"
+    state: absent
+  when: tempInstallConfig.path is defined
+
+- name: Apply the full-deployment yaml for cluster build
+  ansible.builtin.shell: oc apply -f cluster-manifests/{{ clustername }}/{{ clustername }}-full-deploy.yaml

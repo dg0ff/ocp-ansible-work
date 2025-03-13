@@ -1,0 +1,11 @@
+---
+- name: Generate OCP primitives
+  hosts: all
+  connection: local
+  become: false
+  gather_facts: false
+
+  roles:
+    - managed-clusters-role
+
+  tasks:
