@@ -41,3 +41,7 @@ Here is a current layout of this base role folder:
 The operations contained in tasks/main.yml will run through the steps of creating the necessary dirs and files needed for the managed cluster and will then apply those accordingly.
 
 To run this role: `ansible-playbook playbook.yml -i inventory/ --ask-vault-pass`
+
+In summary, this playbook will generate the necessary yaml files it needs for ACM to create and deploy a spoke cluster.  It does this by reading the vars files in defaults, populating the jinja templates with those vars, creating the yamls, and then combining all of these yamls in one 'master' yaml file called 'full-deploy.yaml'.  
+
+Once this 'full-deploy.yaml' file is created, a user can log into the ACM hub cluster cli, and `oc apply` the full-deploy.yaml and the cluster will begin the creation process.  
