@@ -1,4 +1,4 @@
-ocp_clustername: < cluster name >
+clustername: < cluster name >
 vs_worker_cpus: 4
 vs_cores: 1
 vs_worker_mem: 16384
