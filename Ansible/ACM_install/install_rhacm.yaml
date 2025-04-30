@@ -1,0 +1,30 @@
+---
+- name: Install Red Hat Advanced Cluster Management (RHACM)
+  gather_facts: false
+  hosts: local
+  environment:
+    KUBECONFIG: {{ vsphere_cluster_name }}/auth/kubeconfig
+  vars_files:
+     - ./inventory/group_vars/rhacm_vsphere.yaml
+
+  tasks:
+  - name: Install RHACM Part 1
+    shell: "oc apply -f rhacm-files/{{ item }}"
+    loop:
+      - 01_rhacm_namespace.yaml
+      - 02_operator_group.yaml
+      - 03_rhacm_sub.yaml
+
+  - name: Pause for a few minutes to let the operator install
+    pause:
+      minutes: 5
+
+  - name: Install RHACM Part 2
+    shell: "oc apply -f rhacm-files/{{ item }}"
+    loop:
+      - 04_multicluster_cr.yaml
+      - 05_open-cluster-management_subscription-admin_clusterrolebinding.yaml
+
+  - name: Message
+    debug:
+      msg: "Please wait 15-20 minutes for the cluster to settle"

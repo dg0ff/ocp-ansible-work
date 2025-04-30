@@ -5,3 +5,4 @@ The dir `ocp_acm_managed_cluster_deployment` will install a managed cluster from
 
 The dir `ocp_cluster_deployment_vmware` will install a generic OCP cluster in a vmware environment using IPI.
 
+The dir `ACM_install` will have the necessary ansible elements to install the ACM operator within the Openshift cluster. 
